@@ -3,3 +3,5 @@
 - TCL (Transaction Control Language) COMMIT, ROLLBACK, SAVEPOINT
 
 JOIN, GROUP BY, WHERE
+
+PL/SQL basics
