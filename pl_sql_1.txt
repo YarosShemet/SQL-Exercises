@@ -1,0 +1,104 @@
+/*
+1. napisz procedurę, której zadaniem będzie wstawianie danych nowego pracownika do tabeli EMPLOYEES
+   Procedura ma przyjmować następujące parametry
+   p_last_name - nazwisko
+   p_first_name - imię
+   p_job_id     - stanowisko pracy
+   p_department_id - numer departamentu
+   
+   procedura, przed wstawianiem pow. danych ma 
+   - ustalać datę zatrudnienia na bieżącą datę systemową
+   - ustalać pensję pracownika na najniższą pensję na danym stanowisku w całej firmie
+   - ustalać id przełożonego danego pracownika - powinien być nim kierownik danego departamentu (kol. manager_id w tabeli DEPARTMENTS)
+   - jeśli stanowisko danego pracownika to SA_REP, to jego commission_pct oraz bonus powinny być również ustalane na najniższe wartości w stosownych kolumnach w całej tabeli EMPLOYEES
+   - jeśli stanowisko pracy owego pracownika to SA_MAN, to procedura nie powinna wstawiać wiersza, a zamiast tego winna generować wyjątek zdefiniowany przez programistę TOO_MANY_SA_MANAGERS
+   - wartość dla kolumny EMAIL powinna być konstruowana wg schemau pierwszaliteraimienia||nazwisko skonwertowana do dużych liter
+   - numer pracowniczy na maksymalną wartość employee_id + 1
+*/
+select * from employees;
+select * from departments;
+
+create or replace procedure ins_new_emp(p_last_name varchar2, p_first_name varchar2, p_job_id varchar2, p_department_id number)
+is
+    v_hire_date date := SYSDATE; 
+    v_emp_sal number(10);
+    v_man_id number;
+    v_com_pct number(10);
+    v_bonus number(10);
+    TOO_MANY_SA_MANAGERS exception;
+    v_email varchar2(30) := upper(substr(p_first_name, 1, 1) || p_last_name);
+    v_emp_id number;
+begin 
+
+    --wyznaczenie pensji
+    select min(salary)
+    into v_emp_sal
+    from employees
+    where job_id = p_job_id;
+
+    --wyznaczenie przelozonego
+    select manager_id
+    into v_man_id
+    from departments
+    where department_id = p_department_id;
+
+    --warunek dla stanowiska
+    if p_job_id = 'SA_REP' then
+        select min(commission_pct), min(bonus)
+        into v_com_pct, v_bonus
+        from employees;
+    else v_com_pct := null;
+         v_bonus := null;
+    end if;
+
+    --obsluga wyjatku
+    if p_job_id = 'SA_MAN' then
+        raise TOO_MANY_SA_MANAGERS;
+    end if;
+
+    --nadanie numeru
+    select max(employee_id)+1
+    into v_emp_id
+    from employees;
+
+    insert into employees (employee_id, first_name, last_name, email, hire_date, job_id, salary, commission_pct, manager_id, department_id, bonus)
+    values (v_emp_id, p_first_name, p_last_name, v_email, v_hire_date, p_job_id, v_emp_sal, v_com_pct, v_man_id, p_department_id, v_bonus);
+
+    commit;
+
+    --opis bledu przy pojawieniu sie
+    exception
+    when TOO_MANY_SA_MANAGERS then
+        rollback;
+        dbms_output.put_line('Za duzo przelozonych'); 
+end;
+
+--anonimowe bloki dla sprawdzenia, kolejnosc kolumn jest wazna
+
+/*
+select min(salary) from employees
+where job_id='AD_ASST';
+
+select * from departments
+where department_id=10;
+*/
+begin
+    ins_new_emp('Jan', 'Kowalski', 'AD_ASST', 10); --nulle, data, id przelozonego
+end;
+
+select * from employees; 
+
+/*
+select min(commission_pct) from employees;
+
+select min(bonus) from employees;
+*/
+begin
+    ins_new_emp('Jan1', 'Kowalski1', 'SA_REP', 80); --minimalne bonusy
+end;
+
+select * from employees; 
+
+begin
+    ins_new_emp('Jan2', 'Kowalski2', 'SA_MAN', 80); --wyjatek
+end;

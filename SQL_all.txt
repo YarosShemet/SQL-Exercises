@@ -1,0 +1,528 @@
+--Relacyjna baza danych to rodzaj bazy danych, który pozwala przechowywać powiązane ze sobą elementy danych i zapewnia do nich dostęp.
+--Każdy wiersz tabeli jest rekordem z unikatowym identyfikatorem nazywanym kluczem.
+--Kolumny tabeli zawierają atrybuty danych.  
+--DML (Data Manipulation Language) SELECT, INSERT, UPDATE, DELETE, MERGE (data modification)
+--DDL (Data Definition Language) CREATE, ALTER, DROP, RENAME, TRUNCATE (data structure)
+--TCL (Transaction Control Language) COMMIT, ROLLBACK, SAVEPOINT (confirmation of modification)
+--DCL (Data Control Language) GRANT, REVOKE (data admin)
+
+--Data types
+--INTEGER, NUMBER(max digits, float digits), DECIMAL(max digits, float digits), 
+--CHAR(text length) empty spaces not efficient, VARCHAR2(not fixed text length)
+--DATE(till sec), TIMESTAMP(how much precise should be second) TIMESTAMP(6) 11-JAN-23 23:17:18.123000
+--additional: TIMESTAMP WITH (LOCAL) TIMEZONE, INTERVAL YEAR TO MONTH, INTERVAL DAY TO SECOND, CLOB (character large object, giant text info), BLOB (binary, photo, video)
+
+desc hr.employees; --shows null, data types
+--alternative ctrl+table name
+
+--SELECT
+select region_id, country_name from countries;
+select first_name, last_name from employees;
+select DISTINCT job_id from job_history; --only unique values
+select DISTINCT job_id, department_id from job_history; --only unique combinations of columns
+select salary, salary*1.5 from employees;
+--null/2=null
+select start_date, end_date, (end_date-start_date)+1 from job_history; --number of employment days
+--data-data=number
+--data+-number=data
+
+--CONCATENATION
+select first_name||last_name from employees;
+select 'My name is '||first_name||' and my surname is '||last_name from employees;
+select 'Commission for employee: '||commission_pct from employees; --ignores null
+select first_name || '(' || job_id || ')' our_employees from employees;
+
+--ALIAS 
+select start_date, end_date, (end_date-start_date)+1 "employment days" from job_history;
+select start_date, end_date, (end_date-start_date)+1 employment_days from job_history;
+select start_date, end_date, (end_date-start_date)+1 AS employment_days from job_history;
+
+--DUAL
+select 20*365*24*60*60 age_in_seconds from DUAL;
+select 'It''s my life' from dual;
+select q'<It's my life>' from dual; --delimiter
+
+--WHERE
+--{= < > <= >= != <>}
+select first_name, last_name from employees where salary<17000; --dates as well
+select * from employees where 'Dr '||first_name||' '||last_name = 'Dr David Austin';
+select * from employees where first_name>'Steven'; --alphabetic
+select * from employees where salary BETWEEN 4000 and 10000; --dates as well
+select * from job_history where job_id IN ('IT_PROG', 'ST_CLERK');
+select * from employees where commission_pct IS NULL; 
+select * from employees where first_name LIKE 'S%'; --percent means any number of symbols
+select * from employees where first_name like 'D_n'; --underscore means exact number of symbols
+--ST_CLERK different from ST&CLERK
+select * from employees where job_id like 'ST\_%' ESCAPE '\'; --undescore as common symbol not operator
+--AND, OR, NOT
+select * from employees where commission_pct IS NOT NULL; 
+--SEQUENCE OF OPERATORS 
+--() /* +- || =>< LIKE,IS NULL, IN BETWEEN != NOT AND OR
+select * from employees where last_name like '%i%' and salary>employee_id*50
+OR
+job_id in ('IT_PROG', 'PU_CLERK') and commission_pct is null;
+
+--ORDER BY
+select * from employees where job_id = 'IT_PROG' ORDER BY salary;
+select * from employees order by hire_date DESC; --max to min
+select * from employees order by commission_pct NULLS LAST;
+select start_date, end_date, (end_date-start_date)+1 "employment days" from job_history order by 3; --or by alias
+select first_name, last_name, salary, hire_date from employees order by last_name, salary desc; --composite sorting
+
+--Types of functions
+--Single-row: character (text), numeric, date, conversion (transformation of data type), general (with null)
+--Multiple-row
+
+--LOWER/UPPER, INITCAP(first letter upper, other lower for every word) - case conversion
+select LOWER(first_name), UPPER(last_name), INITCAP(job_id) from employees
+
+--CONCAT(same as ||), LENGTH, LPAD/RPAD (adding symbols to string), TRIM(deleting useless symbols) - character manipulation 
+--INSTR(position of fragment), SUBSTR(slice of text), REPLACE(changes in string)
+select CONCAT(first_name, last_name), LENGTH(salary) from employees;
+select RPAD(first_name, 15, ' ')||LPAD(salary, 8, ' '), TRIM(leading/trailing/both ' ' from first_name) from employees;
+select * from employees where INSTR(hire_date, '05')=4;
+select INSTR('Yaraslau Shemet', 'e', 5, 2) from dual; --starting search from 5 and 2nd appearance
+select hire_date, SUBSTR(hire_date, 4, 5) from employees; --starting from 4th postion (can be negative) and 5 symbols, so only month&year
+select hire_date, REPLACE(hire_date, '.', '/') from employees; 
+
+select * from employees where INSTR(LOWER(first_name), 'a', 1, 2) > 0; --min two letters A in the name
+select first_name, SUBSTR(first_name, 2, LENGTH(first_name)-2) new_name from employees; --name without first and last letter
+
+--ROUND (can be negative, so from -1 is 1st from the end), TRUNC(no rounding), MOD(reminder) - numeric
+select salary, ROUND(salary*1.1, 2), TRUNC(salary*1.1, 2), MOD(employee_id, 3)+1 team from employees; --bonus 10%, team division
+
+-- SYSDATE (time now), MONTHS_BETWEEN, ADD_MONTHS, NEXT_DAY, LAST_DAY (last day of month) 
+--ROUND('CC'-age, YYYY-year, Q-quartal, MM-month, W-week, DD-day, HH-hour, MI-minute), TRUNC - date
+select SYSDATE from dual;
+select employee_id, MONTHS_BETWEEN(end_date, start_date), ADD_MONTHS(hire_data, -4) from job_history;
+select NEXT_DAY(sysdate, 3), LAST_DAY(sysdate) from dual; --next Wednesday (if Polish), next Tuesday (if American)
+
+--TO_CHAR(number to char) - conversion
+--9=width, 0=adding zeros, ./D=decimal point position, ,=symbols division
+select TO_CHAR(18, '99999'), TO_CHAR(18, '099999'), TO_CHAR(18, '099999.999'), TO_CHAR(1234567, '99,999,999') from dual;
+--G=grouping, $=for money, S=sign
+select TO_CHAR(1234567, '99G99G9G999'), TO_CHAR(18, '$0999'), TO_CHAR(-18, 'S099') from dual;
+--TO_CHAR(date to char) - conversion
+--Y,YY=RR,YYY,YYYY=how many symbols of year, Year=year in text, MM/mon=symbols of month/month in text
+select hire_date, TO_CHAR(hire_date, 'fmMonth')||'month' from employees; --fm for avoiding spaces
+--D(week day), DD (month day), DDD(year day), DY, DAY=day in text, W, WW, Q, CC(century)
+select hire_date, TO_CHAR(hire_date, 'dD') from employees;
+--AM/P.M., HH/HH24, MI, SS, SSSSS(seconds after midnight), " for not format text, SP=spell
+select TO_CHAR(SYSDATE, 'fmDAY!Mon?yyyy') from dual;
+select TO_CHAR(SYSDATE, 'DDth " of "mm') from dual;
+select TO_CHAR(SYSDATE, 'yyyySP') from dual;
+select 'my colleague with ID = '||employee_id||' and job_id = '||job_id||' joined us on '|| TO_CHAR(hire_date, 'fmDay "the "ddTH "of "fmMonth YYYY') from employees;
+
+--TO_DATE (text to date with your format to default format)
+select * from employees where hire_date > TO_DATE('01-JAN-05', 'dd-MON-RR');
+--TO_NUMBER (text to number)
+select TO_NUMBER('$4555.77', '$9999.999') from dual;
+
+--NVL(if first null return second parametr), NVL2(if first null return third if not null second), NULLIF (if equal then null, if not then first parameter), COALESCE(first not null) - general functions
+select first_name, NVL(commission_pct, 0), NVL2(commission_pct, 'there is commision', 'no commision') from employees;
+select country_id, country_name, NVL2(NULLIF(country_id, UPPER(SUBSTR(country_name, 1, 2))), 'not the same', 'the same') from countries;
+select first_name, last_name, salary, TO_CHAR(salary+salary*NVL(commission_pct, 0), '$99,999.00') salary_with_commission from employees;
+select COALESCE(commission_pct, manager_id, salary) info from employees; 
+
+--DECODE(smth1, smth2, iftrue, if not equal (null))  - conditional function
+select first_name, commission_pct, DECODE(commission_pct, null, 'no commision', 0.1, 'few', 0.4, 'a lot', 'average') from employees;
+--simple CASE (if-else) - conditional - after then must be one type
+select first_name,
+CASE length(first_name)
+WHEN 4 THEN 'too short name' 
+WHEN 5 THEN 'short name'
+WHEN 6 THEN 'average name'
+WHEN 7 THEN 'long name'
+WHEN 8 THEN 'very long name'
+ELSE 'not defined'
+END case_statement
+from employees;
+
+--searched CASE (if-else) - conditional function
+select first_name, salary, commission_pct,
+CASE
+WHEN length(first_name)<=4 THEN 'short name'
+WHEN salary*10>10000 THEN 'salary is above 1000'
+WHEN commision_pct is not null THEN 'there is commision'
+ELSE 'no one'
+END case_statement
+from employees;
+
+select first_name, salary,
+CASE
+WHEN salary<10000 and commission_pct is null THEN 'Bad'
+WHEN salary between 10000 and 15000 OR commission_pct is not null THEN 'Normal'
+WHEN salary>=15000 THEN 'Good'
+END work_conditions
+from employees;
+
+--COUNT(not null), SUM(only numbers), AVG(only number), MAX, MIN - group functions (max 2 nested)
+select COUNT(commission_pc),  COUNT(DISTINCT commssion_pct)), COUNT(NVL(commission_pc, 0)), COUNT(7) from employees;
+select SUM(salary),round(SUM((sysdate-hire_date)/365)) from employees;
+select AVG(salary), round(AVG((sysdate-hire_date)/365)) from employees where job_id='IT_PROG';
+select MIN(hire_date), MAX(hire_daye) from employees;
+
+--GROUP BY
+select department_id, job_id, ROUND(AVG(salary)), MIN(salary), MAX(salary) from employees
+where salary>5000 and commission_pct is null
+GROUP BY department_id, job_id
+order by AVG(salary);
+
+--HAVING = where for groups
+select department_id, count(*), ROUND(AVG(salary)) avg_salary from employees
+where length(first_name)>4
+group by department_id
+HAVING count(*)>3 and avg_salary>5000
+order by department_id;
+
+select manager_id from employees --show managers, whose subordinates have average salary between 6000 and 9000
+where commission_pct is null
+group by manager_id
+having avg(salary) between 6000 and 9000;
+
+--NATURAL JOIN (joining by similar names of columns (no choice), if there is no --> CROSS JOIN, so this method is weak)
+select countr.country_name, reg.region_name from regions reg NATURAL JOIN countries countr where reg.region_name = 'Europe'; --region_id has no table-link because join by it and is relative for two tables
+
+--JOIN USING (you choose, but same name) join rows where columns values are the same
+select first_name, last_name, salary, department_name, department_id, emp.manager_id emp_manager, dep.manager_id dep_manager from employees emp JOIN departments dep USING(department_id)
+--we should indicate which table we consider if there are similarities
+select first_name, last_name, jh.job_id, start_date, end_date from employees JOIN job_history jh USING (employee_id)
+
+--JOIN ON (the most effective)
+select first_name, last_name, jh.job_id, start_date, end_date from employees emp
+JOIN job_history jh ON (emp.employee_id=jh.employee_id AND emp.department_id=jh.department_id) --can be OR
+select first_name, last_name, department_name from employees JOIN departments ON (employee_id=departments.manager_id) --who is the manager of department
+
+select first_name, last_name, jh.job_id, start_date, end_date, department_name from employees emp
+JOIN job_history jh ON (emp.employee_id=jh.employee_id) 
+JOIN departments dep ON (jh.department_id=dep.department_id)
+
+--NONEQUIJOIN - conditions
+select first_name, salary, min_salary, max_salary from employees emp JOIN jobs ON (emp.job_id = jobs.job_id AND salary<(max_salary/2)) --employees with salary less than half of max\
+
+select emp.* --all info
+from employees emp JOIN employees man ON (emp.manager_id = man.employee_id)
+WHERE TO_CHAR(man.hire_date, 'YYYY') = '2005'
+AND emp.hire_date < TO_DATE('01-01-2005', 'DD-MM-YYYY'); --employees work more than managers
+
+--SELF-JOIN (same table has hierarchial id)
+select emp1.employee_id, emp1.first_name, emp1.manager_id, emp2.first_name manager_name from employees emp1
+JOIN employees emp2 ON (emp1.manager_id = emp2.employee_id);
+
+select man.first_name, COUNT(*) from employee emp 
+JOIN employees man ON (emp.manager_id = man.employee_id)
+GROUP BY man.first_name
+HAVING COUNT(*)>6; --managers with more than 6 subordinates
+
+--OUTER JOIN (INNER JOIN+ALL the rows from the left/right/full which do not meet the conditions)
+select first_name, last_name, salary, department_name from employees emp
+LEFT OUTER JOIN departments dep on (emp.department_id=dep.department_id); --all the employees with those who do not have department
+
+select postal_code, city, department_name from locations loc
+LEFT OUTER JOIN departments dep on (loc.location_id=dep.location_id);
+
+select first_name, department_name, department_id from departments
+LEFT OUTER JOIN employees USING (department_id) where first_name is null; --select ONLY those departments where there are no employees 
+
+select first_name, last_name, salary, department_name from employees emp
+RIGHT OUTER JOIN departments dep on (emp.department_id=dep.department_id); --all the departments with those which do not employees	
+
+select country_name, city, street_address from locations
+RIGHT OUTER JOIN countries USING (country_id); --all countries even with no locations
+
+select NVL(first_name, 'no employee'), NVL(last_name, 'no employee'), NVL(salary, 0), NVL(department_name, 'no department') from employees emp
+FULL OUTER JOIN departments dep on (emp.department_id=dep.department_id); --all the employees and departments
+
+select * from countries
+CROSS JOIN regions; --every combination 25 countries*4 regions=100 rows
+
+--SUBQUERY = nested query = inner query = select in select
+select 
+(select MIN(min_salary) from jobs) min_sal,
+(select MAX(LENGTH(first_name)) from employees) max_length_name
+from dual;
+
+select first_name, last_name from employees where employee_id IN (select manager_id from employees); --list of managers
+
+--minmax salary of departments (subquery+join)
+select department_name, min(salary), max(salary) from
+(select salary, department_name from employees JOIN departments USING (department_id))
+group by department_name;
+
+--SINGLE-ROW (one row, may be scalar - one row/one column)
+
+--salary less than 20% of max salary
+select first_name, last_name, salary from employees
+where salary < (select MAX(salary) from employees)/5;
+
+--highest average by job title
+select job_title from jobs JOIN employees USING (job_id)
+group by job_title
+having avg(salary) = (select max(avg(salary)) from employees group by job_id);
+
+--MULTIPLE-ROW (few rows, = IN)
+--never use NOT IN with null values
+--who earns more than David?
+select first_name, last_name, salary from employees
+where salary > ALL(select salary from employees where first_name = 'David');
+
+--which city earns the least?
+select city from hr.employees JOIN hr.departments USING (department_id) JOIN hr.locations USING (location_id)
+group by city
+HAVING SUM(salary) = (select MIN(SUM(salary)) from hr.employees JOIN hr.departments USING (department_id) JOIN hr.locations USING (location_id)
+group by city);
+
+--employees, whose manager receives more than 15000
+select * from employees where manager_id IN (select employee_id from employees where salary>15000);
+
+--CORRELATED (inner and outer select simultaneously)
+--employees with salary above the average in department
+select e1.first_name, e1.last_name, e1.salary from employees e1
+where salary > (select AVG(e2.salary) from employees e2
+where e2.department_id = e1.department_id;
+
+--NESTED subqueries (avoiding JOIN)
+select first_name, last_name, salary from employees where department_id IN 
+(select department_id from departments where location_id IN
+(select location_id from locations where country_id = 
+(select country_id from countries where country_name = 'Germany')));
+
+--UNION ALL (all values from both sets), UNION (sort+distinct), INTERSECT (similar from both sets), MINUS (A-B, A without values from B) - set operators
+--similar number of columns in both sets while union
+--order by ONLY for united sets (at the end of query) and define the columns (with * does not work)
+select * from jobs where job_id like '%MAN%'
+UNION ALL
+select * from jobs where job_id like '%PROG%';
+
+select * from jobs where min_salary between 4500 and 8000 --4 rows
+UNION --output = 6 rows
+select * from jobs where max_salary between 10000 and 15000; --5 rows
+
+select job_id, job_title, max_salary from jobs where min_salary between 4500 and 8000 --4 rows
+INTERSECT --output = 3 rows
+select job_id, job_title, max_salary from jobs where max_salary between 10000 and 15000 --5 rows
+order by max_salary DESC;
+
+select job_id, job_title, max_salary from jobs where min_salary between 4500 and 8000 --4 rows
+MINUS --output = 1 row (4 rows - 3 common)
+select job_id, job_title, max_salary from jobs where max_salary between 10000 and 15000 --5 rows
+
+select manager_id from employees where department_id=20
+INTERSECT --same manager for two departments
+select manager_id from employees where department_id=30
+MINUS --but do they work in department 40 (no, cause not crossed out)
+select manager_id from employees where department_id=40;
+
+--different types while setting
+select department_id, to_char(null) job_id, sum(salary) from employees
+group by department_id
+UNION
+select to_number(null) dep_id, job_id, sum(salary) from employees
+group by job_id
+
+
+--DML: SELECT, INSERT (adding rows), UPDATE (modify existing info), DELETE (rows), MERGE (rarely)
+INSERT INTO countries (country_id, country_name, region_id) -- () can be omitted
+VALUES ('SE', 'Sweden', 1); --id-s are also defined and cannot be null
+
+INSERT INTO employees (employee_id, last_name, email, hire_date, job_id)  --table does not exist, then you don't have right to modify
+VALUES (360, INITCAP('shemet'), UPPER('yaroslav.shemet.02@gmail.com'), TO_DATE('01-MAR-2023', 'DD-MON-YYYY'), UPPER('IT_PROG'));
+
+INSERT INTO new_emps (employee_id, first_name, hire_date) 
+(select employee_id, first_name, hire_date from employees where job_id = 'IT_PROG');
+
+INSERT ALL --adding rows to many tables 
+when department_id = 100 then
+INTO emps_with_dep_100 (name, salary) VALUES (last_name, salary)
+when salary>15000 then
+INTO emps_with_high_salary (name) VALUES (last_name)
+when 5=5 then --always true
+INTO all_emps (name, salary) VALUES (last_name, salary) 
+select last_name, salary, department_id
+from employees where lower(job_id) like '%man%'; 
+
+UPDATE employees SET salary = salary*1.2, job_id='IT_PROG' where employee_id = 100; --one row
+
+UPDATE employees SET salary = salary*1.1 where job_id='IT_PROG'; --multiple row
+
+UPDATE employees SET salary = salary+100 where department_id in (select department_id from departments where department_name = 'Marketing'); 
+
+UPDATE employees SET salary = (select MAX(salary) from employees where job_id='IT_PROG') where employee_id=180; 
+
+DELETE from employees where job_id like '%CLERK%';
+
+DELETE FROM employees where job_id IN 
+(select distinct job_id from employees where department_id in 
+(select department_id from departments where manager_id = 100));
+
+MERGE INTO new_emps --here data will be modified
+USING employees emp --based on this
+ON (new_emps.employee_id = emp.employee_id)
+WHEN MATCHED THEN --condition on line above
+UPDATE SET new_emps.hire_date = SYSDATE 
+DELETE where new_emps.job_id like '%IT%'
+WHEN NOT MATCHED THEN
+INSERT (employee_id, last_name, hire_date, job_id) 
+VALUES (employee_id, last_name, hire_date, job_id);
+
+--COMMIT (confirmation of modifications), ROLLBACK (reset of modifications), SAVEPOINT (where to save modifications) - TCL (transaction control language) com
+--ACID principles:
+--A - atomicity (INSERT+UPDATE+DELETE - all or nothing, indivisible transactions, example: UPDATE job_id, UPDATE salary)
+--C - consistency (when you make query, the state of base is before modifications, example: select MAX(salary), when someone adds the new row, it will not be considered)
+--I - izolation (only when one user commit transaction, the other user will see changes, example: first use select, second insert so they will see different table)
+--D - durable (when commit/rollback modifications will be seen/saved forever)
+
+--no nested transactions 
+--DDL (e.g. create table) closes the transaction
+--when session is dead (low internet connection, comp is dead) or database crashes modifications will be rollback
+
+--COMMIT (end of transactions, before this, modifications for other sessions will not be seen) 
+--ROLLBACK (reset the modifications, can be slow when there are a lot of modifications) 
+--DML1 SAVEPOINT s1; DML2 SAVEPOINT s2; rollback to savepoint s1; --DML2 does not exist, but DML1 left 
+--rollback to savepoint does not end the transaction
+--SET AUTOCOMMIT ON/OFF; every DML modification is automatically confirmed 
+--select * from new_emps for update; this rows cannot be modified by others in order to modify them myself ("lock") 
+
+--Database objects
+--TABLE, VIEW (not edited copy of table), SYNONYM (alias), INDEX (easy search for info), SEQUENCE (unique values)
+select object_type, count(object_type) from user_objects --all_objects - all those, which we have access to
+group by object_type
+order by object_type;
+
+select table_name from user_tables;
+select column_name, data_type, nullable from user_tab_columns;
+
+--USER - username and password
+--SCHEMA - all objects belonged to user 
+--SYS - owner of data dictionary (all technical info) - no DML, only DDL
+--SYSTEM - admin and monitoring
+
+--OBJECTS NAMES (length<30, no functions (e.g. from), first symbol=letter)
+
+CREATE TABLE students(
+student_id integer,
+name varchar2(15),
+start_date date DEFAULT ROUND(SYSDATE), --default value
+scholarship number(6, 2),
+avg_score number(4, 2) DEFAULT 5);
+
+CREATE TABLE new_deps AS (select department_name, MAX(salary) max_salary, MIN(salary) min_salary from employees JOIN departments USING (department_id) group by department_name);
+CREATE TABLE regions2 AS (select * from regions where 5=6); --new empty table, but with the same structure
+
+ALTER TABLE students ADD (course number DEFAULT 3);
+ALTER TABLE students MODIFY (avg_score number(5,3); --modify existing (can't be modify to integer)
+ALTER TABLE students MODIFY (start_date date DEFAULT null); --no default 
+ALTER TABLE departments DROP COLUMN department_name; --can't drop department_id key 
+ALTER TABLE employees SET UNUSED COLUMN hire_date; --exclude column, but not drop
+ALTER TABLE employees DROP UNUSED COLUMNS; --when it's time drop them
+ALTER TABLE students RENAME COLUMN student_id TO st_id;
+ALTER TABLE students READ ONLY; --only for select, but the whole table can be dropped
+
+TRUNCATE TABLE students; --empty strings (info deleted, structure remains)
+DROP TABLE students; --fully drop (info deleted, structure deleted)
+
+--CONSTRAINT TYPES = business rules
+--not null (can't be null), id (primary key), foreign_id (foreign key from other table), check (definite constraint, e.g. range), unique (only unique)
+
+CREATE TABLE students (
+id number CONSTRAINT st_id_unique UNIQUE, --UNIQUE CONSTRAINT (unique values with exception of 'null', indexation) 
+--just UNIQUE, NOT NULL is enough
+name varchar(15), 
+course number NOT NULL, --table level can't be implemented, only in-line
+email varchar(15) CHECK (INSTR(email, '@')>0)), --special condition
+faculty_id integer constraint st_faculty_fk REFERENCES faculties (id) ON DELETE CASCADE, --to reference parent should be either primary key or unique
+--only values from parent-table and can be null (many to one relation)  
+avg_score number(5, 2), 
+start_date date,
+scholarship integer
+--CONSTRAINT st_id_unique UNIQUE (id, name) constraint can be added at the end of command and for many columns (UNIQUE PAIR!!!)
+); 
+CREATE TABLE faculties (
+id number constraint st_id_pk PRIMARY KEY, --primary key=unique+not null, indexation
+--every table SHOULD have ONLY ONE primary key
+name varchar2(15)
+); 
+
+ALTER TABLE students ADD CONSTRAINT st_id_unique UNIQUE (id); --add constraint after creation of table (only for UNIQUE)
+ALTER TABLE students MODIFY (id constraint st_id_unique UNIQUE); --for all constraints (especially NOT NULL)
+ALTER TABLE students DROP constraint st_id_unique; --drop constraint by name
+ALTER TABLE students MODIFY (course null); --drop NOT NULL constraint
+ALTER TABLE students MODIFY (faculty_id references faculties (id)); --only if primary key 
+ALTER TABLE students ADD FOREIGN KEY (faculty_id) references faculties(id);
+ALTER TABLE students MODIFY (course constraint course_check CHECK (course>0 and course<6));
+
+--ON DELETE CASCADE if faculty (parent) deleted, strings from students also would be deleted
+--ON DELETE SET NULL if faculty (parent) deleted, strings from students become null
+
+--INDEX for fast search (but less effective for DML), uniqueness, sorting and group by, set operators
+--full table scan vs ROWID (index value, search less/more)
+--B-TREE (balanced tree) unique vs nonunique (with duplicates)
+--useful when many strings, select few strings, many unique values
+--rowid is quasi-column
+select rowid from employees;
+CREATE INDEX ind ON students (name, course); --B-TREE, nonunique
+CREATE UNIQUE INDEX ind2 ON students (id); --B-TREE, unique
+DROP INDEX ind2;
+--when table is deleted, constraints and indexes are deleted as well
+--when constraint is deleted, index remains
+--BITMAP (binary, M 10010, F 01101, null 00000)
+--useful when few unique values, many strings, boolean operators and null values
+CREATE BITMAP INDEX b_ind ON students (faculty_id) --not available in standard edition
+
+--VIEW = defined select
+--access to certain info (certain columns, security) and mistakes prevention (simplicity), alias for columns (if are standard), perfomance 
+--simple (one table, no functions, no aggregation, insert, update, delete) /complex (vice versa)
+CREATE VIEW fin_emp AS select * from students; --or replace
+CREATE FORCE VIEW fin_emp2 (a, b, c) AS select * from students2; --create even if we don't have such table or column
+CREATE VIEW fin_emp3 AS select * from students where course>2 with check option; --condition when inserting
+CREATE VIEW fin_emp4 AS select * from students with read only; --no dml commands
+ALTER VIEW fin_emp COMPILE; --check for errors
+DROP VIEW fin_emp;
+
+--SYNONYM is for useful names of tables (without schemes and database links)
+--public/private
+CREATE SYNONYM syn_emp FOR employees;
+DROP SYNONYM syn_emp;
+
+--SEQUENCE - unique number generator (primary key)
+CREATE SEQUENCE seq1 --1,2,3,4
+INCREMENT BY 3 --1,4,7,10
+START WITH 100 --100,103,106
+MAXVALUE 200 --100,..., 200, 100, 103; if cycle
+MINVALUE 10 --if cycle and increment by (-3)
+CYCLE --new cycle starts with 1 regardless START WITH
+CACHE 20 --operative memory (20 values)
+
+ALTER SEQUENCE seq1
+NOMAXVALUE
+NOCYCLE;
+
+select s1.nextval from dual;
+select s1.currval from dual;
+
+CREATE SEQUENCE seq_st;
+CREATE SEQUENCE seq_faculty start with 20 increment by 5;
+insert into faculties values (seq_faculty.nextval, 'IT');
+insert into students values (seq_st.nextval, 'Yaros', 3, seq_faculty.currval);
+insert into faculties values (seq_faculty.nextval, 'Marketing');
+insert into students values (seq_st.nextval, 'Alex', 2, 25);
+DROP SEQUENCE seq_st; 
+
+--single ampersand substitution
+select first_name, last_name, salary
+from employees
+where employee_id = &ID; --please enter the employee_id
+AND where first_name = '&name';
+
+--double ampersand substitution
+select first_name, last_name, salary
+from employees
+where last_name like '%&&letter%'; --please enter the letter which will be in both names
+AND where first_name like '%&&letter%';
+--DEFINE letter = a; --no entering, global variable
+
+select first_name, last_name, &col from employees; --which column to select
+
+
+
+ 

@@ -1,0 +1,59 @@
+/*
+2. napisz procedurę, której zadaniem będzie zmiana pensji pracowników na zadanym stanowisku pracy
+   procedura powinna przyjmować dwa parametry
+   p_job_id - id stanowiska pracy
+   p_amount - kwota podwyżki
+   
+   procedura nie powinna dopuszczać do sytuacji, w której nowa pensja byłaby większa od starej o więcej, niż 25 %
+   
+      wskazówka: postaraj się wykorzystać kursory
+   
+   procedura powinna zwracać w następujących parametrach wyjściowych
+   p_number_accepted - liczba pracowników, u których zmiana pensji się powiodła
+   p_number_rejected - liczba pracowników, u których zmiana pensji się nie powiodła ze względu na przedstawione pow. ograniczenie
+*/
+
+create or replace procedure change_salary(p_job_id varchar2, p_amount number, p_number_accepted out number, p_number_rejected out number)
+is 
+
+    --wykorzystanie kursoru 
+    cursor c_emp is
+        select *
+        from employees
+        where job_id = p_job_id;
+
+    v_new_sal number := 0; 
+
+begin
+
+    --definicja parametrów wyjściowych
+    p_number_accepted := 0;
+    p_number_rejected := 0;
+
+    for r_emp in c_emp loop --pętla kursorowa
+        v_new_sal := r_emp.salary + p_amount;
+
+        if (v_new_sal - r_emp.salary)/r_emp.salary <= 0.25 then --może być mniejsza albo większa w granicy 25%
+            update employees
+            set salary = v_new_sal
+            where employee_id = r_emp.employee_id;
+
+            p_number_accepted := p_number_accepted + 1; --licznik
+        else
+            p_number_rejected := p_number_rejected + 1;
+        end if;
+    end loop;
+    commit;
+end;
+
+--anonimowy blok dla sprawdzenia
+select * from employees;
+
+declare
+    acc number;
+    rej number;
+begin
+    change_salary('IT_PROG', 500, acc, rej);
+    dbms_output.put_line('zmiana pensji sie powiodla: ' || acc);
+    dbms_output.put_line('zmiana pensji sie nie powiodla: ' || rej);
+end;
